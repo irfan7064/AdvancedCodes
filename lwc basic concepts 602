@@ -1,0 +1,168 @@
+import { LightningElement } from 'lwc';
+export default class MyComponent extends LightningElement {}
+
+for calling the componenet from other lwc
+<template>
+<!–- HTML code -->
+<c-my-component></c-my-component>
+</template>
+
+
+///////////////////////////////
+parentComponent.html
+<template>
+<c-my-component one-attribute="1"></ c-my-component>
+</template>
+
+
+myComponent.js
+import { LightningElement, api } from 'lwc';
+export default class MyComponent extends LightningElement {
+@api oneAttribute;
+}
+
+//////////////////////////
+css related 
+
+studentBrowserForm.html
+
+<lightning-card title="Filter Students"
+icon-name="utility:search">
+<div class="slds-var-p-horizontal_small">
+<h1 class="crazycomic">
+Filter form
+</h1>
+</div>
+</lightning-card>
+
+Custom style
+deﬁned in CSS ﬁle
+
+studentBrowserForm.css
+.crazycomic {
+font-family: Comic Sans MS;
+text-shadow: 2px 2px
+#c0c0c0;
+}
+Considerations
+• LWC CSS does not require the .THIS keyword
+• The .className selector is supported.
+• The #ID selector is not supported because id values may be transformed into globally
+unique values when the template is rendered.
+
+/////////////////////////////////////////////////////////
+Reactivity in Private Properties with no Decorator
+
+<template>
+<div>{greeting}, {name.first}!</div>
+<lightning-button label="Change Message" onclick={handleClick}>
+</lightning-button>
+</template>
+import { LightningElement} from 'lwc';
+export default class HelloBinding extends LightningElement {
+greeting = "Hello";
+name = { first: "John", last: "Doe" };
+handleClick() {
+this.greeting = "Goodbye"; // primitive property change: rerender!
+this.name.first = "Jane"; // nested object property change: no rerender.
+}
+}
+NOTE: JavaScript primitive types include string, integer, and boolean.
+
+///////////////////////////////////////////////////
+Use the @track Decorator on Objects and Arrays
+@track
+Observe object properties or array elements
+
+import { LightningElement, track } from 'lwc';
+export default class HelloWebComponent extends LightningElement {
+@track student = { first : 'John', last : 'Doe' };
+@track classes = ['DEX450', 'CCD102'];
+function updateProps {
+// reassignments trigger rerender with or without @track
+this.student = {first: 'Jane', last: 'Doe'};
+this.classes = ['DEX601', 'DEX602'];
+// the next two lines only trigger rerender because of @track
+this.student.first = 'Jane';
+this.classes.push('DEX470’);
+}
+}
+You may see @track applied to primitives for
+legacy reasons. This is harmless but unnecessary.
+
+//////////////////////////////////////////////////
+
+Public Properties
+The decorators (api, track, wire) must
+be explicitly imported from the lwc module.
+
+import { LightningElement, api } from 'lwc';
+export default class StudentTile extends LightningElement {
+@api student;
+}
+Annotate a property with @api to mark it as public.
+NOTE: A public property can be set in Lightning App Builder, or by a parent component that uses
+the component in its markup.
+
+
+/////////////////////////////////////////////
+
+Setters
+
+import { LightningElement, api } from 'lwc';
+export default class MyComponent extends LightningElement {
+_studentName;
+@api
+get studentName() {
+return this._studentName;
+}
+set studentName(value) {
+this._studentName = value.toUpperCase();
+}
+}
+A setter is a function that executes
+logic each time a property is set.
+
+//////////////////////////////////////////////////
+Getters
+import { LightningElement, api } from 'lwc';
+export default class MyComponent extends LightningElement {
+student;
+@api isSelected;
+get tileSelected() {
+
+return this.isSelected ? "tile selected" : "tile";
+}
+}
+ 
+ 
+ 
+<template>
+<div class={tileSelected} >
+...
+</div>
+</template>
+myComponent.html
+A getter is a function that
+computes a value for a property.
+
+//////////////////////////////////////////////////
+
+Input Field with Two-Way Data Binding
+Add an onchange handler and update the property to bind data both ways.
+hello.html
+
+<template>
+<lightning-input label="Name" value={greeting} onchange={handleChange}>
+</lightning-input>
+</template>
+
+
+
+import { LightningElement} from 'lwc';
+export default class HelloBinding extends LightningElement {
+greeting = 'World';
+handleChange(event) {
+this.greeting = event.target.value;
+}
+}
