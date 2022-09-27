@@ -1,0 +1,72 @@
+<template>
+    <lightning-card title="Search Question" custom-icon="custom:icon13">
+      <lightning-Input type="search" placeholder="Search..."  onchange={handleAccountSearch}></lightning-input>                 
+        <template if:true={accList}>
+            <lightning-datatable data={accList} columns={columns} key-field="Id">
+            </lightning-datatable>
+        </template>
+        <template if:true={error}>
+            {error}
+        </template>                 
+    </lightning-card>
+    </template>
+
+JS FIle
+import { LightningElement,api, wire, track  } from 'lwc';
+import getquestions from '@salesforce/apex/Questionhelper.getquestions';
+export default class Quiz extends LightningElement {
+  @track columns = [{
+        label: 'Question Number',
+        fieldName: 'Name',
+        type: 'text',
+        sortable: true
+    },
+    {
+        label: 'Question Body',
+        fieldName: 'Question_Body__c',
+        type: 'text',
+        sortable: true
+    },
+    {
+        label: 'Points',
+        fieldName: 'Points__c',
+        type: 'Number',
+        sortable: true
+    }
+];
+@track error;
+@track accList ;
+@wire(getquestions)
+wiredquestions({
+    error,
+    data
+}) {
+    if (data) {
+        this.accList = data;
+    } else if (error) {
+        this.error = error;
+    }
+}
+
+}
+XMl
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>55.0</apiVersion>
+    <isExposed>true</isExposed>
+    <targets>       
+        <target>lightning__AppPage</target>
+        <target>lightning__RecordPage</target>
+        <target>lightning__HomePage</target>
+    </targets>
+</LightningComponentBundle>
+class
+public with sharing class Questionhelper {
+    @AuraEnabled(cacheable=true)
+    public static list<Question__c>getquestions() {
+
+        return [SELECT Id, Name, Question_Body__c, Points__c FROM Question__c];
+
+
+    }
+}
