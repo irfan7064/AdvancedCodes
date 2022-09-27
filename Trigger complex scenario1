@@ -1,0 +1,101 @@
+company
+-totalemployeepf
+
+employee
+-companyid
+-pf
+
+if employee changes company, scenario to increase totalemployeepf of new company by 1000 and decrement old company by 1000.
+
+Company A (-1000)
+Company B (+ 1000)
+//-----------------------------------------------------------------------
+trigger trigName on employee__c(before update){
+
+
+set<id> cmpids=new set<id> {};
+for(employee__c var1:Trigger.new){
+cmpids.add(var1.companyid);
+}
+set<id> oldcmpids=new set<id> {};
+for(employee__c var1:Trigger.old){
+oldcmpids.add(var1.companyid);
+}
+
+
+List<company__c> varclist=[select id ,totalemployeepf FROM company__c where id=:cmpids];
+List<company__c> newcmplist=new List<company__c> ();
+for(company__c varcompany:varclist) {
+
+varcompany.totalemployeepf=varcompany.totalemployeepf+1000;
+newcmplist.add(varcompany);
+}
+
+
+
+List<company__c> varclistold=[select id ,totalemployeepf FROM company__c where id=:oldcmpids];
+List<company__c> oldupdatedcmplist=new List<company__c> ();
+for(company__c varcompany:varclistold) {
+
+
+varcompany.totalemployeepf=varcompany.totalemployeepf-1000;
+oldupdatedcmplist.add(varcompany);
+}
+update oldupdatedcmplist;
+update newcmplist;
+
+
+
+}
+//-----------------------------------------------------------------------------
+//by using the maps
+
+
+trigger trigName on employee__c(before update){
+
+
+set<id> cmpids=new set<id> {};
+for(employee__c var1:Trigger.new){
+cmpids.add(var1.companyid);
+}
+set<id> oldcmpids=new set<id> {};
+for(employee__c var1:Trigger.old){
+oldcmpids.add(var1.companyid);
+}
+
+
+map<Id,company__c> oldcmpMap = new map<Id,company__c>([select id ,totalemployeepf FROM company__c where id=:cmpids]);
+map<Id,company__c> newcmpMap = new map<Id,company__c>([select id ,totalemployeepf FROM company__c where id=:oldcmpids]);
+
+map<id,map<id,company__c>> toupdate= new map<id,map<id,company__c>> ();
+map<id,map<id,company__c>> toupdate2= new map<id,map<id,company__c>> ();
+
+for(employee__c var1:Trigger.new){
+
+oldcmpMap.get(var1.companyid).totalemployeepf=oldcmpMap.get(idold).totalemployeepf-1000;
+newcmpMap.get(var1.companyid).totalemployeepf=newcmpMap.get(var1.company.id).totalemployeepf+1000;
+
+//can be incremented and decremented by some variable not only by 1000
+               
+toupdate.put(var1.companyid,oldcmpMap);
+toupdate2.put(var1.companyid,newcmpMap);
+
+}
+
+list<company__c>toFinalUpdate = new list<company__c>();
+
+            for(Id cId : toupdate.keyset())
+            {
+                 toFinalUpdate.addAll(toupdate.get(cId).values());
+                             
+            }
+
+for(Id cId : toupdate2.keyset())
+            {
+                 toFinalUpdate.addAll(toupdate2.get(cId).values());
+                             
+            }
+             update toFinalUpdate;
+
+
+}
