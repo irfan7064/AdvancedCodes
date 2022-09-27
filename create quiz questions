@@ -1,0 +1,99 @@
+<template>
+
+    <lightning-Card title="Questions" icon-name="standard:account">
+       
+        <div style="border-top: 1px solid rgb(221 219 218);">
+            <!-- datatable -->
+            <lightning-datatable
+                    key-field="id"
+                    data={accList}
+                    columns={columns}
+                    onrowselection={getSelectedRec}
+                    column-widths-mode="auto">
+            </lightning-datatable>
+            <!-- /datatable -->
+        </div>
+        <div if:true={showText}>Selected:{numberofselections}</div>
+        <lightning-button label="Show Selected" title="Show text" onclick={getSelectedNumber} class="slds-m-left_x-small"></lightning-button>
+        
+
+    </lightning-Card>
+
+</template>
+
+import { LightningElement,api, wire,track} from 'lwc';
+import updateAccounts from '@salesforce/apex/searchQuestions.updateAccounts';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { refreshApex } from '@salesforce/apex';
+
+const columns = [
+    { label: 'Question Body', fieldName: 'Question_Body__c',initialWidth: 1000, wrapText: true,type:'text',editable: false },
+    { label: 'Points', fieldName: 'Points__c',initialWidth: 150 ,editable: false},
+];
+
+export default class Selectques extends LightningElement {
+    @api accList=[] ;
+    @api selectedAccs = [];
+    @api selectedAccsString;
+    @track data;
+    @track columns = columns;
+    @track error;
+    @api records = [];
+    @api numberofselections;
+    showText = false;
+    draftValues = [];
+    wiredRecords;
+    
+
+
+     getSelectedRec() {
+        var selectedRecords =  this.template.querySelector("lightning-datatable").getSelectedRows();
+        console.log('entered the getselectedrec function' );
+        if(selectedRecords.length > 0){
+            console.log('selectedRecords are ', selectedRecords);
+   
+            let ids = '';
+            selectedRecords.forEach(currentItem => {
+                ids = ids + ',' + currentItem.Id;
+            });
+            this.selectedIds = ids.replace(/^,/, '');
+            this.records = selectedRecords;
+           }   
+      }
+      getSelectedNumber(event) {
+        //const selectedRows = event.detail.selectedRows;
+        // Display that fieldName of the selected rows
+        var selectedRows =  this.template.querySelector("lightning-datatable").getSelectedRows();
+        this.showText = true;
+        this.numberofselections=selectedRows.length;   
+    }
+
+
+
+}
+
+/////////////////////////
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>55.0</apiVersion>
+    <masterLabel>QuizCreation LWC</masterLabel>
+    <description>QuizCreation LWC</description>
+    <isExposed>true</isExposed>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__FlowScreen</target>
+    </targets>
+
+    <targetConfigs>
+        <targetConfig targets="lightning__FlowScreen">
+            <!--property name="accList" type="String" label="List of Questions Retrived" 
+                        description="Id of the current record"/-->
+        <propertyType name='PT' extends='SObject' label='Select a sObject' description='Select a sObject'/>
+        <property name='accList' type='{PT[]}' label='Records' description='List of Questions Retrived'/>
+        <property name="records" type='{PT[]}' label="Selected Accounts" description="Selected Account Ids"/>
+        <!--property name="selectedAccsString" type="String" label="Selected Accounts String"
+             description="Selected Account Ids"/-->
+           
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
