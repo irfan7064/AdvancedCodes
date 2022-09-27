@@ -1,0 +1,377 @@
+// Setting up the Request URL
+@RestResource(urlMapping='/ContactAPI/*')
+global with sharing class ContactResource {
+
+    // Get Method
+    @HTTPGet
+    global static List<Contact> getContactIdAndNames() {
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request URI
+        String contactRequestURI = contactRequest.requestURI;
+        // Getting the limit from the request URI
+        Integer contactLimit = Integer.valueOf(contactRequestURI.substring(contactRequestURI.lastIndexOf('/') + 1));
+        // Querying contacts
+        List<Contact> contactList = [SELECT Id, Name FROM Contact LIMIT :contactLimit];
+        // Returning the contacts in the response
+        return contactList;
+    }
+
+    // POST Method
+    @HTTPPost
+    global static Contact createNewContact(String firstName, String lastName, String birthDate, String leadSource) {
+        // Initializing New Contact
+        Contact contact = new Contact();
+        contact.FirstName = firstName;
+        contact.LastName = lastName;
+        contact.Birthdate = Date.parse(birthDate);
+        contact.LeadSource = leadSource;
+        // Inserting Contact
+        insert contact;
+        // Returning the contact in the response
+        return contact;
+    }
+
+    // DELETE Method
+    @HTTPDelete
+    global static Map<String, String> deleteContact() {
+        // Initializing the response map
+        Map<String, String> responseMap = new Map<String, String>();
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request URI
+        String contactRequestURI = contactRequest.requestURI;
+        // Getting the contact id from the request URI
+        Id contactId = Id.valueOf(contactRequestURI.substring(contactRequestURI.lastIndexOf('/') + 1));
+        // Initializing contact to delete
+        Contact contact = new Contact(Id=contactId);
+        // Deleting contact
+        try {
+            delete contact;
+            responseMap.put('success', '1');
+            responseMap.put('message', 'Record Deleted Successfully');
+        } catch(DmlException ex) {
+            responseMap.put('success', '0');
+            responseMap.put('message', ex.getMessage());
+        }
+        // Returning the response map in the response
+        return responseMap;
+    }
+
+    // PUT Method
+    @HTTPPut
+    global static Contact upsertContact(String firstName, String lastName, String birthDate, String leadSource) {
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request URI
+        String contactRequestURI = contactRequest.requestURI;
+        // Getting the contact id from the request URI
+        String contactId = contactRequestURI.substring(contactRequestURI.lastIndexOf('/') + 1);
+        // Initializing contact to upsert
+        Contact contact = new Contact();
+        // Assigning id to the contact if the contact id obtained from the URL is not empty
+        if(String.isNotEmpty(contactId)) {
+            contact.Id = contactId;
+        }
+        contact.FirstName = firstName;
+        contact.LastName = lastName;
+        contact.Birthdate = Date.parse(birthDate);
+        contact.LeadSource = leadSource;
+        // Upserting Contact
+        upsert contact;
+        // Returning the contact in the response
+        return contact;
+    }
+
+    // PATCH Method
+    @HTTPPatch
+    global static Contact updateContact() {
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request URI
+        String contactRequestURI = contactRequest.requestURI;
+        // Getting the contact id from the request URI
+        String contactId = contactRequestURI.substring(contactRequestURI.lastIndexOf('/') + 1);
+        // Getting the request body from the request
+        String requestBody = contactRequest.requestBody.toString();
+        // Creating an instance of contact object
+        Contact contact;
+        // Checking if the contact id obtained from the URL is not empty
+        if(String.isNotEmpty(contactId)) {
+            // Deserializing the JSON response body and assigning it to the instance of Contact object
+            contact = (Contact) JSON.deserialize(requestBody, Contact.class);
+            // Assigning the contact id
+            contact.Id = contactId;
+            // Updating Contact
+            update contact;
+        }
+        // Returning the contact in the response
+        return contact;
+    }
+}
+
+
+
+////////
+
+// Setting up the Request URL
+@RestResource(urlMapping='/ContactAPI1/*')
+global with sharing class ContactResource1 {
+
+    // Creating a response wrapper class
+    global class ResponseWrapper {
+        String success;
+        String message;
+    }
+
+    // Get Method
+    @HTTPGet
+    global static List<Contact> getContactIdNameAndLeadSource() {
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the URL parameters from the request
+        Map<String, String> contactRequestParams = contactRequest.params;
+        // Getting the limit and leadsource from the request URL params
+        Integer contactLimit = Integer.valueOf(contactRequestParams.get('limit'));
+        String leadSource = contactRequestParams.get('leadsource');
+        // Querying contacts
+        List<Contact> contactList = [SELECT Id, Name, LeadSource FROM Contact WHERE LeadSource =:leadSource LIMIT :contactLimit];
+        // Returning the contacts in the response
+        return contactList;
+    }
+
+    // Post Method
+    @HTTPPost
+    global static Contact createNewContact() {
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request body from the request
+        String requestBody = contactRequest.requestBody.toString();
+        // Deserializing the JSON response body and assigning it to an instance of Contact object
+        Contact contact = (Contact) JSON.deserialize(requestBody, Contact.class);
+        // Inserting Contact
+        insert contact;
+        // Returning the contact in the response
+        return contact;
+    }
+
+    // DELETE Method
+    @HTTPDelete
+    global static List<ResponseWrapper> deleteContacts() {
+        // Initializing the response wrapper list
+        List<ResponseWrapper> responseWrapperList = new List<ResponseWrapper>();
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request URI
+        String contactRequestURI = contactRequest.requestURI;
+        // Getting the contact ids from the request URI
+        String[] contactIds = (contactRequestURI.substring(contactRequestURI.lastIndexOf('/') + 1)).split(',');
+        // Initializing contacts list to delete
+        List<Contact> contactsToDelete = new List<Contact>();
+        // Adding contacts in the contacts list
+        for(String contactId : contactIds) {
+            Contact contact = new Contact(Id=contactId);
+            contactsToDelete.add(contact);
+        }
+        // Deleting contacts with partial success enabled
+        Database.DeleteResult[] deleteResults = Database.delete(contactsToDelete, false);
+        // Checking the result of delete operation for each contact
+        for(Database.DeleteResult deleteResult : deleteResults) {
+            // Initializing the response wrapper
+            ResponseWrapper wrapper = new ResponseWrapper();
+            if (deleteResult.isSuccess()) {
+                // Delete successful, setting up the appropriate message in response wrapper
+                wrapper.success = '1';
+                wrapper.message = 'Successfully deleted contact with Id: ' + deleteResult.getId();
+            }
+            else {
+                // Delete failed, getting errors and setting up the error message in response wrapper
+                wrapper.success = '0';
+                for(Database.Error error : deleteResult.getErrors()) {
+                    wrapper.message = 'The following error has occurred for contact with Id: ' + deleteResult.getId() + '. ';
+                    wrapper.message += error.getStatusCode() + ': ' + error.getMessage() + '. ';
+                    wrapper.message += 'Contact fields that affected this error: ' + error.getFields();
+                }
+            }
+            // Adding response wrapper instance to the response wrapper list
+            responseWrapperList.add(wrapper);
+        }
+        // Returning the response wrapper list in the response
+        return responseWrapperList;
+    }
+
+    // PATCH Method
+    @HTTPPatch
+    global static List<ResponseWrapper> updateContacts() {
+        // Initializing the response wrapper list
+        List<ResponseWrapper> responseWrapperList = new List<ResponseWrapper>();
+        // Initializing the request parameter with the incoming request
+        RestRequest contactRequest = RestContext.request;
+        // Getting the request body from the request
+        String requestBody = contactRequest.requestBody.toString();
+        // Deserializing the JSON request body and initializing the list of contacts to update
+        List<Contact> contactsToUpdate = (List<Contact>) JSON.deserialize(requestBody, List<Contact>.class);
+        // Updating contacts with partial success enabled
+        Database.SaveResult[] updateResults = Database.update(contactsToUpdate, false);
+        // Checking the result of update operation for each contact
+        for(Database.SaveResult updateResult : updateResults) {
+           // Initializing the response wrapper
+            ResponseWrapper wrapper = new ResponseWrapper();
+            // Initializing the response wrapper
+            if (updateResult.isSuccess()) {
+                // Update successful, setting up the appropriate message in response wrapper
+                wrapper.success = '1';
+                wrapper.message = 'Successfully updated contact with Id: ' + updateResult.getId();
+            }
+            else {
+                // Update failed, getting errors and setting up the error message in response wrapper
+                wrapper.success = '0';
+                for(Database.Error error : updateResult.getErrors()) {
+                    wrapper.message = 'The following error has occurred for contact with Id: ' + updateResult.getId() + '. ';
+                    wrapper.message += error.getStatusCode() + ': ' + error.getMessage() + '. ';
+                    wrapper.message += 'Contact fields that affected this error: ' + error.getFields();
+                }
+            }
+            // Adding response wrapper instance to the response wrapper list
+            responseWrapperList.add(wrapper);
+        }
+        // Returning the response wrapper list in the response
+        return responseWrapperList;
+    }
+}
+
+/////////////////////
+@isTest
+public with sharing class ContactResourceTest {
+
+    @TestSetup
+    static void makeData() {
+        // Inserting a new contact
+        Contact contactTest = new Contact(FirstName='Richard', LastName='Hendricks');
+        insert contactTest;
+    }
+
+    // Testing the GET request
+    @isTest
+    static void testGetContactIdAndNames() {
+        Test.startTest();
+        // Forming the request
+        RestRequest contactRequest = new RestRequest();
+        contactRequest.requestUri = 'https://ap5.salesforce.com/services/apexrest/ContactAPI/1';
+        contactRequest.httpMethod = 'GET';
+        RestContext.request = contactRequest;
+        // Testing the API
+        List<Contact> returnedContacts = ContactResource.getContactIdAndNames();
+        // Confirming the response
+        System.assert(returnedContacts != null);
+        System.assert(returnedContacts.size() == 1);
+        System.assertEquals('Richard Hendricks', returnedContacts[0].Name);
+        Test.stopTest();
+    }
+
+    // Testing the POST request
+    @isTest
+    static void testCreateNewContact() {
+        Test.startTest();
+        // Testing the API
+        Contact returnedContact = ContactResource.createNewContact('Gavin', 'Belson', '03/03/1980', 'Web');
+        System.assert(returnedContact != null);
+        System.assert(returnedContact.Id != null);
+        // Querying the newly created contact
+        Contact queriedContact = [SELECT LeadSource FROM Contact WHERE Id =: returnedContact.Id];
+        // Confirming the response
+        System.assert(queriedContact != null);
+        System.assertEquals(returnedContact.LeadSource, queriedContact.LeadSource);
+        Test.stopTest();
+    }
+
+    // Testing the DELETE request
+    @isTest
+    static void testDeleteContact() {
+        Test.startTest();
+        // Querying the contact to delete
+        Contact contactToDelete = [SELECT Id FROM Contact LIMIT 1];
+        // Forming the request
+        RestRequest contactRequest = new RestRequest();
+        contactRequest.requestUri = 'https://ap5.salesforce.com/services/apexrest/ContactAPI/' + contactToDelete.Id;
+        contactRequest.httpMethod = 'DELETE';
+        RestContext.request = contactRequest;
+        // Testing the API
+        Map<String, String> responseMap = ContactResource.deleteContact();
+        // Confirming the response
+        Contact queriedContact = [SELECT Id, IsDeleted FROM Contact WHERE Id =:contactToDelete.Id ALL ROWS];
+        System.assertEquals('1', responseMap.get('success'));
+        System.assert(queriedContact.IsDeleted);
+        Test.stopTest();
+    }
+
+    // Testing the UPSERT request
+    @isTest
+    static void testUpsertContact() {
+        Test.startTest();
+        // Querying the contact to upsert
+        Contact contactToUpsert = [SELECT Id FROM Contact LIMIT 1];
+        // Forming the request
+        RestRequest contactRequest = new RestRequest();
+        contactRequest.requestUri = 'https://ap5.salesforce.com/services/apexrest/ContactAPI/' + contactToUpsert.Id;
+        contactRequest.httpMethod = 'PUT';
+        RestContext.request = contactRequest;
+        // Testing the API
+        Contact returnedContact = ContactResource.upsertContact('Gavin', 'Belson', '03/03/1980', 'Phone Enquiry');
+        // Confirming the response
+        Contact queriedContact = [SELECT Name, LeadSource FROM Contact WHERE Id =: contactToUpsert.Id];
+        System.assertEquals(returnedContact.Id, queriedContact.Id);
+        System.assertEquals('Gavin Belson', queriedContact.Name);
+        System.assertEquals('Phone Enquiry', queriedContact.LeadSource);
+        Test.stopTest();
+    }
+
+    // Testing the UPDATE request
+    @isTest
+    static void testUpdateContact() {
+        Test.startTest();
+        // Querying the contact to update
+        Contact contactToUpdate = [SELECT Id FROM Contact LIMIT 1];
+        // Updating the first name of contact
+        Contact contact = new Contact();
+        contact.FirstName = 'Gavin';
+        // Forming the request
+        RestRequest contactRequest = new RestRequest();
+        contactRequest.requestUri = 'https://ap5.salesforce.com/services/apexrest/ContactAPI/' + contactToUpdate.Id;
+        contactRequest.httpMethod = 'PATCH';
+        contactRequest.requestBody = Blob.valueOf(JSON.serialize(contact));
+        RestContext.request = contactRequest;
+        // Testing the API
+        Contact returnedContact = ContactResource.updateContact();
+        // Confirming the response
+        Contact queriedContact = [SELECT FirstName, LastName FROM Contact WHERE Id =: contactToUpdate.Id];
+        System.assertEquals(returnedContact.Id, queriedContact.Id);
+        System.assertEquals('Gavin', queriedContact.FirstName);
+        System.assertEquals('Hendricks', queriedContact.LastName);
+        Test.stopTest();
+    }
+
+    // Testing the DELETE request with Exception
+    @isTest
+    static void testDeleteContactWithException() {
+        Test.startTest();
+        // Querying the contact to delete
+        Contact contactToDelete = [SELECT Id FROM Contact LIMIT 1];
+        // Deleting the contact
+        delete contactToDelete;
+        // Forming the request with deleted contact id
+        RestRequest contactRequest = new RestRequest();
+        contactRequest.requestUri = 'https://ap5.salesforce.com/services/apexrest/ContactAPI/' + contactToDelete.Id;
+        contactRequest.httpMethod = 'DELETE';
+        RestContext.request = contactRequest;
+        // Testing the API
+        Map<String, String> responseMap = ContactResource.deleteContact();
+        // Confirming the response
+        System.assertEquals('0', responseMap.get('success'));
+        Test.stopTest();
+    }
+}
+
+///////////////////////
+
+
